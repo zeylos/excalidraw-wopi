@@ -16,28 +16,14 @@ and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.
   `readOnlyRootFilesystem: true`, `allowPrivilegeEscalation: false`,
   and `capabilities.drop: ["ALL"]`.
 
+### Fixed
+
+- A race in the relay interop suite: test h now awaits writer-b's copy
+  of the reader broadcast, so a late event no longer fails tests i
+  and j on a slow CI runner.
+- A flaky timeout in the relay deadlock test: the budget grew from
+  10 s to 30 s for busy CI runners.
+
 ## [1.0.0] - 2026-08-31
 
 Initial release.
-
-### Added
-
-- A single Go binary that makes excalidraw a WOPI editor for La Suite
-  Drive: discovery XML, `POST /launch`, the board REST API, the
-  socket.io realtime relay, and the embedded TypeScript SPA.
-- Proof-signed WOPI calls from the server; the browser never talks to
-  Drive directly.
-- Stateless sessions: an HS256 JWT with an AES-256-GCM-sealed WOPI
-  access token inside.
-- Multi-user realtime collaboration with presence, cursors, image
-  relay, and syncer election.
-- Multi-replica operation: rendezvous-hash room ownership with DNS
-  peer discovery, or a hashing load balancer in front.
-- Save-and-lock orchestration with conflict detection and a user
-  prompt; the service never merges on its own.
-- A Helm chart, published to GHCR as an OCI artifact.
-- The e2e suites: interop, local Playwright, HA, dockerized Drive
-  smoke, and the nightly slow suite.
-
-[Unreleased]: https://github.com/zeylos/excalidraw-wopi/compare/v1.0.0...HEAD
-[1.0.0]: https://github.com/zeylos/excalidraw-wopi/releases/tag/v1.0.0

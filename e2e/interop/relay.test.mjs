@@ -183,6 +183,9 @@ describe("relay interop", () => {
 
   it("h: a read-only session's MOUSE_LOCATION still passes through with the server identity", async () => {
     const recv = withTimeout(waitForEvent(writerA, "client-broadcast"), "writer-a client-broadcast (reader mouse)");
+    // writer-b receives the same broadcast; await it here, or on a slow
+    // host it lands during test i and cascades into test j.
+    const recvB = withTimeout(waitForEvent(writerB, "client-broadcast"), "writer-b client-broadcast (reader mouse)");
     reader.emit("server-volatile-broadcast", ROOM, Buffer.from(JSON.stringify({
       type: "MOUSE_LOCATION",
       payload: { pointer: { x: 9, y: 9 }, user: { id: "forged", name: "Forged" } },
@@ -191,6 +194,7 @@ describe("relay interop", () => {
     const [raw] = await recv;
     const event = decodeJSON(raw);
     expect(event.payload.user).toEqual({ id: "reader-1", name: "Reader" });
+    await recvB;
   });
 
   it("i: image-get produces an IMAGE_REQUEST client-broadcast at the peer", async () => {

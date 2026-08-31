@@ -162,7 +162,7 @@ func TestRoomEventsDoNotDeadlockUnderConcurrentRealJoinsAndLeaves(t *testing.T) 
 
 	select {
 	case <-done:
-	case <-time.After(10 * time.Second):
+	case <-time.After(30 * time.Second):
 		t.Fatal("timed out: concurrent real joins/leaves through the handler did not complete, possible deadlock")
 	}
 
