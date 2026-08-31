@@ -56,21 +56,28 @@ ingress:
 podSecurityContext:
   runAsNonRoot: true
   runAsUser: 65532
+  runAsGroup: 65532
   fsGroup: 65532
 
-containerSecurityContext: {}
+containerSecurityContext:
+  readOnlyRootFilesystem: true
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop: ["ALL"]
 
 readinessProbe:
   httpGet:
     path: /healthz
     port: 8080
   periodSeconds: 5
+  timeoutSeconds: 5
 
 livenessProbe:
   httpGet:
     path: /healthz
     port: 8080
   periodSeconds: 15
+  timeoutSeconds: 5
   failureThreshold: 3
 
 podDisruptionBudget:

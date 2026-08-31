@@ -1,6 +1,6 @@
 # excalidraw-wopi
 
-This service makes excalidraw a WOPI editor. It has been initally designed for La Suite Drive.
+This service makes excalidraw a WOPI editor. It has been initially designed for [La Suite Drive](https://github.com/suitenumerique/drive).
 The current version supports collaboration so that several Drive users can edit the same board
 at the same time and storage stays in Drive, no data ever goes out.
 
