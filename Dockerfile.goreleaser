@@ -1,0 +1,9 @@
+# Runtime image for the excalidraw-wopi binary. goreleaser's dockers_v2
+# pipe supplies the pre-built binary; this file only copies it in.
+FROM gcr.io/distroless/static-debian13:nonroot@sha256:1c2c046bc09ed40fad370b599a0b1ae7987f55b01e247cf27a7c27cd97e5bbc7
+
+ARG TARGETPLATFORM
+COPY ${TARGETPLATFORM}/excalidraw-wopi /usr/local/bin/excalidraw-wopi
+
+EXPOSE 8080
+ENTRYPOINT ["/usr/local/bin/excalidraw-wopi"]

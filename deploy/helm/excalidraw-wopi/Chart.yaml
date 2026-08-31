@@ -1,0 +1,12 @@
+apiVersion: v2
+name: excalidraw-wopi
+description: A Helm chart that deploys excalidraw-wopi, a WOPI editor for La Suite Drive.
+type: application
+# The chart uses policy/v1 and networking.k8s.io/v1.
+kubeVersion: ">=1.21-0"
+# The release workflow sets the real version from the git tag.
+version: 0.0.0
+appVersion: "0.0.0"
+home: https://github.com/zeylos/excalidraw-wopi
+sources:
+  - https://github.com/zeylos/excalidraw-wopi

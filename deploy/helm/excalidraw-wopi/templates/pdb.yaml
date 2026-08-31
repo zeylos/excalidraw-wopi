@@ -1,0 +1,13 @@
+{{- if .Values.podDisruptionBudget.enabled }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "excalidraw-wopi.fullname" . }}
+  labels:
+    {{- include "excalidraw-wopi.labels" . | nindent 4 }}
+spec:
+  maxUnavailable: {{ .Values.podDisruptionBudget.maxUnavailable }}
+  selector:
+    matchLabels:
+      {{- include "excalidraw-wopi.selectorLabels" . | nindent 6 }}
+{{- end }}

@@ -1,0 +1,66 @@
+[
+  {
+    "description": "short token, plain url",
+    "token": "tok",
+    "url": "https://drive.example.org/api/v1.0/wopi/files/11111111-1111-1111-1111-111111111111",
+    "ticks": 639028224000000000,
+    "signature": "cTymjElbqTz9dib7EEvTHBFzL1wikqa2uvGc/0tukaaug7KB1XMSKlLZ1fngWXlWKZ1NARjkcFx35eKYdtGvLiZl8wJHf4X5/Hb8u49gUJupzystAZc2dhVmBL1ROk6D2tgo3gLiKNBn5dUaJZLlYacz3obwjbOnBOwAIDlf6a/TQEyEtkLlYMSawRZXDADNUAJLsF+NGlCBexzp4BRIzmxvSFcUvpA0o0/CGqpL7IQoUu649q5ey24/+FpEEoQMFqw1K55MBvLCDUpY4+RHzKvFgEJTB+VhZyrSvh7zaWz0e3rZIat2++Hev8cuY8eHjuacjQI5RymptW5+3ItbVw==",
+    "verified_by_drive": true
+  },
+  {
+    "description": "long token, contents url",
+    "token": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "url": "https://drive.example.org/api/v1.0/wopi/files/22222222-2222-2222-2222-222222222222/contents",
+    "ticks": 639091602450000000,
+    "signature": "Qv06hklvVbF1acM2QkrLgMFrXlSQW01/pjf+4EfmdYJsPEN6NGPZDOwuDLEB83Omq774zjHheWT3AxxiY9dk3lQY2UO28SeOiA2dCJ/NZpBY8wwqTgGDl7PPDfLOJ9orkEpbbA8S8IYmSBq/Xw6ZqztPkz4btO6siz5CHrMM6I/ISqTDSHW/kkk5X1aBjaOYsxNWdmmPECLPj1MovwVEH3BDnHNivfTDNoYLlcjjXsAKmDjMXFa2nrSojQAZSCs2ePtN61bP+H9wXS4QxJ8jhzk49OahKJhGPU5fopq7njBASRq0AQmIa/LX9cyoqO0iearXrOOZkrIrft1vzReCxQ==",
+    "verified_by_drive": true
+  },
+  {
+    "description": "non-ASCII token bytes",
+    "token": "tok-éè中文-😀",
+    "url": "https://drive.example.org/api/v1.0/wopi/files/33333333-3333-3333-3333-333333333333",
+    "ticks": 639159120001234560,
+    "signature": "BUQcfliSgHxtNzgY1kOJ17q9ho+mc53ueKzaOSwHhm3PZilsQaZHKq2sPAz8NmCNSEXfYj4ACC7ezeA+WACHL+tgvR9fWa97YROHq7PrP4dCxrunX+1kyueMT2vo7Z8I/0ZNKXXMeJ94QPatJCGmNN3+DrkcwlBAIeMq803wBo78EcGKNekJniVo7q5iQovpOOd1n8bBuvSwmuLP6C7YERnEwh4oDXZRnREzhTA/Wf3gIxYd2Uqzg6cjGnL7IS4qEDrFc92sqhZV7YdqaDbhRrgU9Tje5FZyklYOYQr/cO/J73kW9MYI/msreFphhMHZnA4L/o7tVgdV+a9A6lqf4g==",
+    "verified_by_drive": true
+  },
+  {
+    "description": "url with access_token query string",
+    "token": "opaque-token-value-42",
+    "url": "https://drive.example.org/api/v1.0/wopi/files/44444444-4444-4444-4444-444444444444/contents?access_token=opaque-token-value-42&access_token_ttl=36000000",
+    "ticks": 639229005000000000,
+    "signature": "ZWrgOetJh+Yw4CrhB3diIowstbNdqrhXHOO0lMBXjlmeEfU4hQfgTnmd390noi53352wc0765jTT/nPnEWiNQGz5TirJLfr7TMYGQ4VwgjZM7kX2pye93ulHLWnR0n7MydzKShjtl5kTNiIYmmfNy3+oolZSxI7X4p5PMaU+q0LvJYez2T/aXYE8uyNSo31u6newHUMcYXlkwWJGLGDMJaFKLAwzTi8Zh3qZNt3ccUStvBilZvsyEnV63cdoQFiRrih/KY1lcErmdYiohdSfX4dF6JaVHGANEW5YwVtv7ll5MU9T4UsiTuacbVayseD4BzVmh/VOzmLnJW7YUvYQCQ==",
+    "verified_by_drive": true
+  },
+  {
+    "description": "mixed-case url, query already uppercase",
+    "token": "TokenWithMixedCase",
+    "url": "https://Drive.Example.ORG/API/v1.0/Wopi/Files/55555555-5555-5555-5555-555555555555?Access_Token=ALREADY-UPPER",
+    "ticks": 639028223990000000,
+    "signature": "S+IQoMPgn96s1M/w2bJ70JIQKvD9W3i93ESkWDFZFiesAsWJ/AjmMgO938NvC8lJ36jv3EafsGstFlFSsSLFGLIZ+d2fJjtaOI4jiYNiY6megE87HwtQ8ZAxz9x2QJh4FmmTkh7ixxdmaO2NRRKdazrBQHPuNp5ygoUfCPsybe1JPP1CiIeQkNz3pvqWyZMNbHsgjx+YjF4dBBhUd6GdrIPK0fluB8cGb2J4F+E+QUirZvFVGrrG7bSmlXRyM/Pb2zLAFrS1Wn6UUfAXuwFGA75PDfwgBx0UZG3EtE+lCGYvJGSR84F7o6zHPrNvoN6eG4urAzbAzGIBagqgNZPrDQ==",
+    "verified_by_drive": true
+  },
+  {
+    "description": "single character token",
+    "token": "x",
+    "url": "https://drive.example.org/api/v1.0/wopi/files/66666666-6666-6666-6666-666666666666",
+    "ticks": 639228672000000000,
+    "signature": "IIv09dOkcZ7yx/T/lT+5uwv2k54n1t6Jf+7KDLM1/wY/kmu8pWa9U2PNRXXa8RVe0db+i5xLgNETPGh72M3jytw15XjxOtb/6d8EYkhzCgiLzhJ3qpUJyvxsFu7Y9whgH5Ylnnn4MQxplFDS+m0lLQQ72jggxiuoaQ6CxVkG3QoSJepTcvgSmxXtpxnGnrgegjoyk1Hl302GpqnsfTy3R7zeJ/3DR10dvVIMzyiaIEejRxUMk9kovYY+H4zdAARTIYZvUYS+8g7KCZDlDJNYJRTt4fA6xH+rJy4cj6Kl0SXtS9RiRSkFGu8/jY0w8g7PB6wA/dyDURbSAKUQBsnsJQ==",
+    "verified_by_drive": true
+  },
+  {
+    "description": "timestamp near the .NET epoch, far past",
+    "token": "early-token",
+    "url": "https://drive.example.org/api/v1.0/wopi/files/77777777-7777-7777-7777-777777777777",
+    "ticks": 599266080000000000,
+    "signature": "GVv+gVbeqlaVhaoTNWvB1iaramtT4zhMJsYSZT+xh/ruYbfgtf0eu6+FJ3fXGXgXpXdjKoK8OZ5XhQElk/6YLftE6jd5qVb685wl16GFII+7GAZ5CD+Nn67rghOWvi2x6SClsHEuT/7sXXtq11W34XyU4U+bRT2LgAwJedI/IdGtkEmbfZF1kvkSRw9i3bTde8oNK5age9xhs/XTkeXt+A72XQi0JgvY49N5+CgKWD3U65/U6DjmAHBtlqn43ERrVqYoyhhuQwAx7bi0wcJEWIwevcTGtSaciZpMSKqlmFDL7md5zbLJvs3M/TOFtNjE8p0wOhZ5A1Ltcyl9Rp5oqQ==",
+    "verified_by_drive": true
+  },
+  {
+    "description": "timestamp far in the future",
+    "token": "future-token",
+    "url": "https://drive.example.org/api/v1.0/wopi/files/88888888-8888-8888-8888-888888888888",
+    "ticks": 662380416000000000,
+    "signature": "EQ69AMZsNDW9xH6KyVu91KbqGCqKjsg6qoHv5ux5LsXaNNpHC91RGofv+SF8EutCtyVV6PDP6sJW3BkZ6pxvIQS95b0ZTpfBDlvTr5aONeIm0qpvLvsmxf+ABBnvL2u+rW3/Ke8yLv5Eg7aQy6gHZwNe5aDOmQM3ixDGw3/osteHDMuzdUwDkvwZ+3LpDMpB5gHJVYHScFbQfD9JUQ01hTo+Ug9WfPn5BriFU83bNVbv324kzoTScRDdhK+t9qxNJOjJ+zoDur+pW1oPOXKhWf831bQpjLMfoMq+vw9AJj2+GEvo7VxIFT+oN+lf6APSLfhW40RfSILgpKYY6tPO8Q==",
+    "verified_by_drive": true
+  }
+]

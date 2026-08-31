@@ -1,0 +1,64 @@
+version: 2
+
+# The vite before-hook runs first so go:embed picks up the real web/dist
+# bundle, not a stale or empty one.
+before:
+  hooks:
+    - make web-build
+
+builds:
+  - id: excalidraw-wopi
+    main: ./cmd/excalidraw-wopi
+    binary: excalidraw-wopi
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w
+      - -X main.version={{ .Version }}
+      - -X main.commit={{ .Commit }}
+      - -X main.date={{ .Date }}
+
+archives:
+  - id: excalidraw-wopi
+    ids:
+      - excalidraw-wopi
+    formats:
+      - tar.gz
+    name_template: >-
+      {{ .Binary }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}
+
+checksum:
+  name_template: checksums.txt
+
+dockers_v2:
+  - id: excalidraw-wopi
+    ids:
+      - excalidraw-wopi
+    dockerfile: Dockerfile.goreleaser
+    images:
+      - ghcr.io/zeylos/excalidraw-wopi
+    tags:
+      - "{{ .Version }}"
+      - latest
+    platforms:
+      - linux/amd64
+      - linux/arm64
+
+release:
+  github:
+    owner: zeylos
+    name: excalidraw-wopi
+
+changelog:
+  use: github
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^chore:"

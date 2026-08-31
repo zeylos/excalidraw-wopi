@@ -1,0 +1,55 @@
+/**
+ * SPDX-FileCopyrightText: 2020 Excalidraw
+ * SPDX-License-Identifier: MIT
+ */
+
+// This stylesheet has no rule that reads a Nextcloud CSS custom property
+// (--color-*, --border-radius-*, --default-grid-baseline, --button-hover-bg,
+// --popup-text-color, --font-face, and so on): this project's page carries
+// no Nextcloud host stylesheet, so those variables never resolve, and such
+// rules would leave dead or broken declarations. It also has no
+// context-menu color/background/shadow block (same reason), no
+// `.App--version-preview` selector (there is no version-preview feature),
+// no library "remove" dropdown button or `.library-unit__checkbox` fix
+// (there is no library feature), no `.excalidraw--mobile` toolbar grid
+// (there is no mobile-interface hook), no `toolbar-embeddable` or
+// `.whiteboard-viewer__embedding` rules (this project keeps stock
+// embeddable behavior), and no `.excalidraw button.help-icon`/
+// `.HelpDialog__header` overrides (stock help stays visible).
+//
+// The rules below are layout and cosmetic fixes with no such dependency.
+
+.excalidraw-wrapper {
+	height: 100%;
+	position: relative;
+	overflow: hidden;
+}
+
+:root[dir='ltr']
+	.excalidraw
+	.layer-ui__wrapper
+	.zen-mode-transition.App-menu_bottom--transition-left {
+	transform: none;
+}
+
+.excalidraw .panelColumn {
+	text-align: start;
+}
+
+.excalidraw .Switch input,
+.excalidraw .RadioGroup__choice input {
+	opacity: 0;
+}
+
+.excalidraw .context-menu-item__label {
+	font-weight: normal !important;
+}
+
+.Stack .button:not([role="checkbox"]) {
+	margin: 0;
+	min-width: 34px;
+}
+
+.App-menu__left {
+	width: 270px;
+}

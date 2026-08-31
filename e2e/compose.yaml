@@ -1,0 +1,171 @@
+# Dockerized Drive stack for the excalidraw-wopi e2e suite.
+#
+# Host-networking constraint: under a docker daemon with no bridge
+# networking and no iptables, every service here uses network_mode: host
+# and binds its own port directly on localhost.
+# Services address each other, and are addressed by scripts on the host, as
+# localhost:<port> — never by service name. `ports:` mappings would be
+# no-ops under network_mode: host, so this file has none. GitHub Actions
+# runners also support host networking, so this one file works in CI too.
+#
+# Port map: postgresql 5432, redis 6379, rustfs 9000, Drive app-dev
+# 8000. Our own Go binary (excalidraw-wopi, port 8080) is not a compose
+# service: it runs on the host, started by `make e2e-up` (see Makefile).
+
+name: excalidraw-wopi-e2e
+
+services:
+  postgresql:
+    image: postgres:18
+    network_mode: host
+    environment:
+      - POSTGRES_DB=drive_e2e
+      - POSTGRES_USER=dinum
+      - POSTGRES_PASSWORD=pass
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h localhost -p 5432 -U dinum -d drive_e2e"]
+      interval: 1s
+      timeout: 2s
+      retries: 300
+    volumes:
+      # postgres 18+ images own the whole /var/lib/postgresql mount.
+      - postgresql_data:/var/lib/postgresql
+
+  redis:
+    image: redis:8
+    network_mode: host
+    healthcheck:
+      test: ["CMD", "redis-cli", "-h", "localhost", "-p", "6379", "ping"]
+      interval: 1s
+      timeout: 2s
+      retries: 300
+
+  rustfs:
+    image: rustfs/rustfs:1.0.0-beta.11
+    network_mode: host
+    environment:
+      - RUSTFS_ACCESS_KEY=drive
+      - RUSTFS_SECRET_KEY=password
+      - RUSTFS_ADDRESS=127.0.0.1:9000
+      - RUSTFS_CONSOLE_ENABLE=false
+      # The console default binds every interface; keep it on loopback
+      # in case a future change enables it.
+      - RUSTFS_CONSOLE_ADDRESS=127.0.0.1:9001
+    volumes:
+      - rustfs_data:/data
+
+  createbuckets:
+    image: curlimages/curl:8.21.0
+    network_mode: host
+    depends_on:
+      rustfs:
+        condition: service_started
+    entrypoint:
+      - sh
+      - -c
+      - |
+        set -e
+        # rustfs answers HTTP with 503 while it starts, so the HEAD
+        # probe below is also the readiness gate. A second create on
+        # an existing bucket splits the rustfs bucket metadata, so the
+        # create runs only after the HEAD says the bucket is absent.
+        i=0
+        while :; do
+          code=$$(curl -s -o /dev/null -w '%{http_code}' --aws-sigv4 "aws:amz:us-east-1:s3" --user drive:password -I http://localhost:9000/drive-media-storage)
+          if [ "$$code" = 200 ]; then
+            break
+          fi
+          if [ "$$code" = 404 ] && curl -sfS --aws-sigv4 "aws:amz:us-east-1:s3" --user drive:password -X PUT http://localhost:9000/drive-media-storage; then
+            break
+          fi
+          i=$$((i + 1))
+          if [ "$$i" -ge 120 ]; then
+            echo "createbuckets: rustfs did not answer; last code $$code" >&2
+            exit 1
+          fi
+          sleep 1
+        done
+
+        # rustfs can still answer 503 right after the create, so the
+        # versioning call retries too. The call is idempotent, so it
+        # also runs when the bucket already existed.
+        i=0
+        until curl -sfS --aws-sigv4 "aws:amz:us-east-1:s3" --user drive:password -X PUT "http://localhost:9000/drive-media-storage?versioning" -H "Content-Type: application/xml" -d '<VersioningConfiguration xmlns="http://s3.amazonaws.com/doc/2006-03-01/"><Status>Enabled</Status></VersioningConfiguration>'; do
+          i=$$((i + 1))
+          if [ "$$i" -ge 120 ]; then
+            echo "createbuckets: versioning enable failed" >&2
+            exit 1
+          fi
+          sleep 1
+        done
+
+  app-dev:
+    build:
+      context: ./.drive
+      dockerfile: Dockerfile
+      target: backend-development
+      network: host
+      args:
+        DOCKER_USER: ${DOCKER_USER:-1000:1000}
+    image: excalidraw-wopi-e2e-drive:backend-development
+    user: ${DOCKER_USER:-1000:1000}
+    network_mode: host
+    command: ["python", "manage.py", "runserver", "127.0.0.1:8000"]
+    env_file:
+      - env/drive.env
+    environment:
+      - DJANGO_CONFIGURATION=Development
+      - PYLINTHOME=/app/.pylint.d
+    depends_on:
+      postgresql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      createbuckets:
+        condition: service_completed_successfully
+      celery-dev:
+        condition: service_started
+    healthcheck:
+      test:
+        - "CMD"
+        - "python"
+        - "-c"
+        - "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1.0/config/', timeout=3)"
+      interval: 2s
+      timeout: 5s
+      retries: 150
+      start_period: 10s
+
+  celery-dev:
+    build:
+      context: ./.drive
+      dockerfile: Dockerfile
+      target: backend-development
+      network: host
+      args:
+        DOCKER_USER: ${DOCKER_USER:-1000:1000}
+    image: excalidraw-wopi-e2e-drive:backend-development
+    user: ${DOCKER_USER:-1000:1000}
+    network_mode: host
+    command: ["celery", "-A", "drive.celery_app", "worker", "-l", "INFO"]
+    env_file:
+      - env/drive.env
+    environment:
+      - DJANGO_CONFIGURATION=Development
+    depends_on:
+      postgresql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      createbuckets:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "celery", "-A", "drive.celery_app", "inspect", "ping", "--timeout", "5"]
+      interval: 3s
+      timeout: 10s
+      retries: 100
+      start_period: 10s
+
+volumes:
+  postgresql_data:
+  rustfs_data:

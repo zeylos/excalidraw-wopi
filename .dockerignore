@@ -1,0 +1,13 @@
+.git
+.github
+.opencode
+.env
+bin
+data
+dist
+docs
+e2e
+web/node_modules
+web/dist
+**/*_test.go
+**/*.test

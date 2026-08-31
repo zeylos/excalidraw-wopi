@@ -1,0 +1,27 @@
+excalidraw-wopi is deployed.
+
+{{- if not .Values.secret.create }}
+
+Create the Secret before you start the release, if it does not exist yet:
+
+  kubectl create secret generic {{ .Values.secret.existingSecret }} \
+    --from-file=proof-key.pem \
+    --from-file=session-secret
+
+See docs/DEPLOYMENT.md, section "Proof-key lifecycle", for the proof-key.pem file format.
+{{- end }}
+
+{{- if or (not .Values.config.publicUrl) (not .Values.config.wopiAllowedOrigins) }}
+
+WARNING: config.publicUrl or config.wopiAllowedOrigins is empty.
+The service refuses every POST /launch call with an empty allowed-origins list.
+A wrong publicUrl breaks launch and discovery both.
+Set both values before you register this release with a WOPI host.
+{{- end }}
+
+{{- if not .Values.peerDiscovery.enabled }}
+
+peerDiscovery.enabled is false: this release runs the load-balancer consistent-hash topology.
+Point an external load balancer at every replica, and hash on the "room" query parameter.
+See "Setup 2: a load balancer with a consistent hash on room" in docs/HIGH-AVAILABILITY.md.
+{{- end }}

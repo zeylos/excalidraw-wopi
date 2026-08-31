@@ -1,0 +1,14 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+/* The canvas sizes itself against its ancestors, so every ancestor
+   needs a definite height up to the viewport. */
+html,
+body,
+#root,
+.App {
+  height: 100%;
+  margin: 0;
+}
+
+.excalidraw-wrapper {
+  height: 100%;
+}

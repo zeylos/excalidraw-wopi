@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>excalidraw-wopi</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <!-- The Go server injects the real config JSON here when it serves this page. -->
+    <script type="application/json" id="ew-config">{}</script>
+    <!-- Set the asset path before the module script, so Excalidraw finds its fonts at /fonts. -->
+    <script>
+      window.EXCALIDRAW_ASSET_PATH = '/'
+    </script>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

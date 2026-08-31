@@ -1,0 +1,86 @@
+replicaCount: 2
+
+image:
+  repository: ghcr.io/zeylos/excalidraw-wopi
+  # An empty tag falls back to .Chart.AppVersion.
+  tag: ""
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+config:
+  # Maps to EXCALIDRAW_WOPI_PUBLIC_URL. The service needs a correct
+  # value; an empty value breaks launch and discovery.
+  publicUrl: ""
+  # A list of allowed WOPI host origins, joined with "," into
+  # EXCALIDRAW_WOPI_WOPI_ALLOWED_ORIGINS. An empty list makes the
+  # service refuse every /launch call.
+  wopiAllowedOrigins: []
+
+peerDiscovery:
+  # false selects the load-balancer consistent-hash topology instead:
+  # no headless Service, no peer env. The chart does not provide the
+  # hashing load balancer; put one in front that hashes on the "room"
+  # query parameter (see docs/HIGH-AVAILABILITY.md, Setup 2).
+  enabled: true
+
+secret:
+  # An existing Secret holding the keys proof-key.pem and
+  # session-secret. Set this in production. secret.create, when true,
+  # takes precedence over this value.
+  existingSecret: "excalidraw-wopi-secrets"
+  # Renders a chart-managed Secret from proofKeyPem and sessionSecret
+  # below, and takes precedence over existingSecret. Use this for
+  # tests only.
+  create: false
+  proofKeyPem: ""
+  sessionSecret: ""
+
+service:
+  type: ClusterIP
+  port: 8080
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts:
+    - host: excalidraw.example.org
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 65532
+  fsGroup: 65532
+
+containerSecurityContext: {}
+
+readinessProbe:
+  httpGet:
+    path: /healthz
+    port: 8080
+  periodSeconds: 5
+
+livenessProbe:
+  httpGet:
+    path: /healthz
+    port: 8080
+  periodSeconds: 15
+  failureThreshold: 3
+
+podDisruptionBudget:
+  enabled: false
+  maxUnavailable: 1
+
+extraEnv: []
+resources: {}
+nodeSelector: {}
+tolerations: []
+affinity: {}
+podAnnotations: {}
+podLabels: {}

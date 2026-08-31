@@ -1,0 +1,24 @@
+# golangci-lint v2 config. Kept modest on purpose: the standard preset
+# (errcheck, govet, ineffassign, staticcheck, unused) plus misspell and
+# revive with their defaults.
+version: "2"
+
+linters:
+  default: standard
+  enable:
+    - misspell
+    - revive
+  exclusions:
+    presets:
+      - std-error-handling
+      - common-false-positives
+    paths:
+      # web/ holds npm packages; some vendor .go files.
+      - web/
+
+formatters:
+  enable:
+    - gofumpt
+  exclusions:
+    paths:
+      - web/

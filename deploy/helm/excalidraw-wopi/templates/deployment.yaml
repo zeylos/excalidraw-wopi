@@ -1,0 +1,92 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "excalidraw-wopi.fullname" . }}
+  labels:
+    {{- include "excalidraw-wopi.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "excalidraw-wopi.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "excalidraw-wopi.selectorLabels" . | nindent 8 }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      volumes:
+        - name: excalidraw-wopi-secrets
+          secret:
+            secretName: {{ include "excalidraw-wopi.secretName" . }}
+            defaultMode: 0440
+      containers:
+        - name: excalidraw-wopi
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 8080
+          volumeMounts:
+            - name: excalidraw-wopi-secrets
+              mountPath: /etc/excalidraw-wopi
+              readOnly: true
+          readinessProbe:
+            {{- toYaml .Values.readinessProbe | nindent 12 }}
+          livenessProbe:
+            {{- toYaml .Values.livenessProbe | nindent 12 }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          securityContext:
+            {{- toYaml .Values.containerSecurityContext | nindent 12 }}
+          env:
+            {{- if .Values.config.publicUrl }}
+            - name: EXCALIDRAW_WOPI_PUBLIC_URL
+              value: {{ .Values.config.publicUrl | quote }}
+            {{- end }}
+            {{- if .Values.config.wopiAllowedOrigins }}
+            - name: EXCALIDRAW_WOPI_WOPI_ALLOWED_ORIGINS
+              value: {{ join "," .Values.config.wopiAllowedOrigins | quote }}
+            {{- end }}
+            - name: EXCALIDRAW_WOPI_PROOF_KEY_PATH
+              value: /etc/excalidraw-wopi/proof-key.pem
+            - name: EXCALIDRAW_WOPI_SESSION_SECRET_FILE
+              value: /etc/excalidraw-wopi/session-secret
+            {{- if .Values.peerDiscovery.enabled }}
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            # $(POD_IP) is Kubernetes env interpolation, not a shell expansion.
+            - name: EXCALIDRAW_WOPI_DNS_SELF
+              value: "http://$(POD_IP):8080"
+            - name: EXCALIDRAW_WOPI_DNS_PEERS
+              value: {{ printf "%s:8080" (include "excalidraw-wopi.peersServiceName" .) | quote }}
+            {{- end }}
+            {{- with .Values.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
