@@ -24,4 +24,7 @@ FROM gcr.io/distroless/static-debian13:nonroot@sha256:1c2c046bc09ed40fad370b599a
 COPY --from=go-build /excalidraw-wopi /usr/local/bin/excalidraw-wopi
 
 EXPOSE 8080
+# The exec form is mandatory: the distroless image has no shell.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
+    CMD ["/usr/local/bin/excalidraw-wopi", "-healthcheck"]
 ENTRYPOINT ["/usr/local/bin/excalidraw-wopi"]

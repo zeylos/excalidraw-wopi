@@ -14,8 +14,11 @@ import (
 
 const envPrefix = "EXCALIDRAW_WOPI_"
 
+// DefaultListenAddr is the LISTEN_ADDR default. The healthcheck mode in
+// cmd/excalidraw-wopi reuses it, so the two stay in step.
+const DefaultListenAddr = ":8080"
+
 const (
-	defaultListenAddr        = ":8080"
 	defaultPublicURL         = "http://localhost:8080"
 	defaultProofKeyPath      = "/var/lib/excalidraw-wopi/proof-key.pem"
 	defaultMaxImageBytes     = 10 * 1024 * 1024
@@ -58,7 +61,7 @@ type Config struct {
 // and logs a warning when neither is set.
 func Load() (Config, error) {
 	cfg := Config{
-		ListenAddr:         getEnv("LISTEN_ADDR", defaultListenAddr),
+		ListenAddr:         getEnv("LISTEN_ADDR", DefaultListenAddr),
 		PublicURL:          getEnv("PUBLIC_URL", defaultPublicURL),
 		SessionSecret:      getEnv("SESSION_SECRET", ""),
 		ProofKeyPath:       getEnv("PROOF_KEY_PATH", defaultProofKeyPath),

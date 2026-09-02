@@ -31,7 +31,7 @@ browser never talks to Drive directly.
 /web                   the TypeScript React SPA, embedded by go:embed
 /e2e                   the interop, local, and dockerized-Drive suites
 /docs                  the architecture and operator guides
-/deploy                the Helm chart, published to GHCR as an OCI artifact
+/deploy                the Helm chart (a GHCR OCI artifact) and a compose example
 /assets                a template .excalidraw file
 ```
 

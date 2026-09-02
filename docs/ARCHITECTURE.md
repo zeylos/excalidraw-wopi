@@ -196,8 +196,13 @@ changes — `Manager.roomLiveLocked`):
    A 409 with an *empty* `X-WOPI-Lock` means the lock already expired
    (Drive's `cache.touch` cannot revive an expired lock); that
    candidate falls through to a full re-`LOCK` instead.
-3. **Conflict.** A 409 carrying a *foreign* lock value (neither empty
-   nor this room's own) puts the room into conflict state: saves and
+3. **Conflict.** Two triggers put a room into conflict state: a 409
+   carrying a *foreign* lock value (neither empty nor this room's
+   own), or a version check that finds Drive's live `Version` (the S3
+   ETag) does not match the version this service recorded from its own
+   last successful `PutFile` (`internal/room/save.go`, `checkVersion`;
+   it runs on every lock refresh, and when a new user joins an
+   already-established room). In conflict state, saves and
    lock refreshes both pause until a user resolves it. The transition
    pushes a `conflict-state` socket.io event
    (`{"inConflict": bool, "saveStalled": bool}`) to every socket in the

@@ -6,4 +6,7 @@ ARG TARGETPLATFORM
 COPY ${TARGETPLATFORM}/excalidraw-wopi /usr/local/bin/excalidraw-wopi
 
 EXPOSE 8080
+# The exec form is mandatory: the distroless image has no shell.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
+    CMD ["/usr/local/bin/excalidraw-wopi", "-healthcheck"]
 ENTRYPOINT ["/usr/local/bin/excalidraw-wopi"]

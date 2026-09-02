@@ -46,8 +46,8 @@ func TestLoadDefaults(t *testing.T) {
 		t.Fatalf("Load() returned an error: %v", err)
 	}
 
-	if cfg.ListenAddr != defaultListenAddr {
-		t.Errorf("ListenAddr = %q, want %q", cfg.ListenAddr, defaultListenAddr)
+	if cfg.ListenAddr != DefaultListenAddr {
+		t.Errorf("ListenAddr = %q, want %q", cfg.ListenAddr, DefaultListenAddr)
 	}
 	if cfg.PublicURL != defaultPublicURL {
 		t.Errorf("PublicURL = %q, want %q", cfg.PublicURL, defaultPublicURL)

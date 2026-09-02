@@ -43,6 +43,7 @@ save pipeline, lock lifecycle, and session model.
   and how to choose between them.
 - `deploy/helm/excalidraw-wopi` — the Helm chart, published as an OCI
   artifact at `oci://ghcr.io/zeylos/charts/excalidraw-wopi`.
+- `deploy/docker` — a docker compose example.
 
 ## Build
 

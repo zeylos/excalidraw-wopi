@@ -33,77 +33,6 @@ Two more variables exist outside `internal/config`, read directly with
 | `EXCALIDRAW_WOPI_PROOF_KEY_PEM` | Injects the proof key PEM content directly, instead of a file path. This variable stays supported, but the recommended delivery is a Kubernetes `Secret` mounted as a read-only file at `EXCALIDRAW_WOPI_PROOF_KEY_PATH`. When set, `EXCALIDRAW_WOPI_PROOF_KEY_PEM` wins over `EXCALIDRAW_WOPI_PROOF_KEY_PATH` entirely: the service never touches the filesystem for the proof key. A value in the process environment can leak through `/proc/<pid>/environ`, an inherited child process, or a diagnostic dump. To use the file mode, remove this variable. An empty value still wins over the path and then fails to parse. |
 | `EXCALIDRAW_WOPI_FAKE_HOST` | Set to `1` to mount an in-process fake WOPI host at `/fakewopi/` for local development and the `make e2e-local` Playwright suite. **Never set this in production**: the fake host performs no authentication of its own. The service refuses to enable it unless `EXCALIDRAW_WOPI_PUBLIC_URL` is a loopback address (`localhost` or a loopback IP), and it logs a loud warning whenever it is on. |
 
-## Proof-key lifecycle
-
-The proof key is the RSA keypair the service uses to sign the
-`X-WOPI-Proof`/`X-WOPI-ProofOld` headers on every WOPI call, and to
-publish its public parts in the `<proof-key>` element of
-`GET /hosting/discovery`.
-
-**First start.** If neither `EXCALIDRAW_WOPI_PROOF_KEY_PEM` nor a file
-at `EXCALIDRAW_WOPI_PROOF_KEY_PATH` exists, the service generates a new
-2048-bit RSA key, sets the "old" key equal to the current key, and
-persists both to `EXCALIDRAW_WOPI_PROOF_KEY_PATH`
-(`internal/proof/proof.go`, `Load`). This file must survive a restart
-and a redeploy — mount it on a persistent volume, or inject the key
-through `EXCALIDRAW_WOPI_PROOF_KEY_PEM` instead (see below).
-
-**File format.** The key file holds two concatenated PEM blocks,
-PKCS8-encoded, `-----BEGIN PRIVATE KEY-----` type, current key first
-and old key second. A file with only one block means the old key
-equals the current key (the state right after first-start
-generation). This format needs no custom parser and round-trips
-through any PEM-aware tool (`openssl`, etc.).
-
-**Kubernetes secret injection.** Generate a key file once. Run the
-service against an absent key file and read back what it wrote, or use
-`openssl` to generate a PKCS8 RSA key pair. Store its two-block PEM
-content as a `Secret`. The recommended mode mounts that `Secret` as a
-read-only volume, and `EXCALIDRAW_WOPI_PROOF_KEY_PATH` points at the
-key file inside that volume. A process environment variable can leak
-through `/proc/<pid>/environ`, an inherited child process, or a
-diagnostic dump.
-
-A mounted file with restrictive permissions avoids that class of leak.
-Because the mount is read-only, the key must already exist in the
-`Secret` before the pod boots. The service cannot write a freshly
-generated key to a read-only mount. The alternative mode injects the
-same PEM content as an environment variable, through
-`EXCALIDRAW_WOPI_PROOF_KEY_PEM`. Every replica then loads the identical
-key, from the file or from the environment. Neither mode needs a
-shared or persistent filesystem for the proof key.
-
-**Concurrent first-start race.** If two replicas both hit an absent
-key file at once, `persist` uses `os.Link` (which fails instead of
-silently overwriting) to detect the race: the losing replica discards
-its own freshly generated key, re-reads the file the winner wrote, and
-adopts that key instead. Every replica converges on one key on disk.
-This path only matters when replicas share a filesystem; it does not
-apply to the `EXCALIDRAW_WOPI_PROOF_KEY_PEM` injection mode, where the
-key is already fixed before any replica starts.
-
-**Rotation.** A WOPI host accepts a proof signature made with either the
-current or the old key (that is what the six discovery XML attributes,
-`modulus`/`exponent`/`oldmodulus`/`oldexponent`, publish). To rotate:
-
-1. Generate a new RSA keypair (2048 bits or larger; the service
-   rejects anything smaller on load).
-2. Build a new two-block PEM file (or PEM string): the new key first,
-   the previous *current* key second (not the previous *old* key —
-   that one is retired).
-3. Update the `proof-key.pem` key of the mounted `Secret` (or the file
-   at `EXCALIDRAW_WOPI_PROOF_KEY_PATH`, or the
-   `EXCALIDRAW_WOPI_PROOF_KEY_PEM` value), and restart every replica.
-4. Drive re-fetches `/hosting/discovery` on its next nightly
-   `trigger_wopi_configuration` run (or run it by hand — see the
-   runbook step below) and picks up the new modulus/exponent pair. In
-   the window between the restart and that refetch, Drive still
-   verifies signatures against the old key, which the rotation above
-   keeps valid as the published "old" key.
-
-There is no in-process rotation command; rotation is a file/secret
-replacement plus a restart, exactly like first-start generation.
-
 ## Drive-side registration
 
 Registering this service with Drive needs two Drive environment
@@ -141,6 +70,49 @@ routing-map rebuild (the `urlsrc` carries no version token), so this
 step is about picking up new configuration promptly, not about
 avoiding broken links.
 
+## Proof-key lifecycle
+
+The proof key is the RSA keypair that signs every WOPI call to Drive.
+Drive learns its public parts from the discovery XML.
+
+**First start.** When no key exists, the service generates one and
+writes it to `EXCALIDRAW_WOPI_PROOF_KEY_PATH`. This file must survive
+a restart and a redeploy: mount it on a persistent volume, or inject
+the key through `EXCALIDRAW_WOPI_PROOF_KEY_PEM` instead.
+
+**File format.** The file holds two concatenated PKCS8 PEM
+private-key blocks: the current key first, the old key second. A file
+with one block means the old key equals the current key. Any
+PEM-aware tool (`openssl`) can produce or read it.
+
+**Kubernetes secret injection.** Generate the key file once (run the
+service once against an absent file and read back what it wrote, or
+use `openssl`), and store the two-block PEM in a `Secret`. The
+recommended mode mounts the `Secret` read-only and points
+`EXCALIDRAW_WOPI_PROOF_KEY_PATH` at the file inside it; an
+environment variable can leak through diagnostics or a child process.
+The alternative mode sets the same PEM as
+`EXCALIDRAW_WOPI_PROOF_KEY_PEM`. In both modes every replica loads
+the identical key, and no persistent volume is needed. Replicas that
+share a writable volume are also safe: a first-start race converges
+on one key.
+
+**Rotation.** Drive accepts a signature from the current key or the
+old key, so a rotation causes no downtime:
+
+1. Generate a new RSA keypair (2048 bits or larger; the service
+   rejects a smaller key).
+2. Build a new two-block PEM: the new key first, the previous
+   *current* key second (the previous *old* key retires).
+3. Replace the `Secret`, the key file, or the variable value, and
+   restart every replica.
+4. Trigger a Drive discovery refetch, or wait for its nightly run
+   (see the runbook below). Until then Drive verifies against the old
+   key, which step 2 keeps published.
+
+There is no rotation command; a rotation is a secret replacement plus
+a restart.
+
 ## Ingress
 
 Every path below must reach the `excalidraw-wopi` binary. All of them
@@ -174,6 +146,14 @@ deployment recipes, and their failure behavior. See
 middleware, the token-layer enforcement, and the hop guard the
 peer-discovery topology relies on.
 
+## Docker Compose
+
+`deploy/docker/compose.yaml` holds a single-instance docker compose
+example. See `deploy/docker/README.md` for the setup steps. The
+example runs one instance; it does not enforce the multi-replica
+invariants above. For a multi-replica deployment, use the Helm chart
+below, and see `docs/HIGH-AVAILABILITY.md` for its two topologies.
+
 ## Kubernetes: the Helm chart
 
 The Helm chart at `deploy/helm/excalidraw-wopi` packages the manifest
@@ -198,44 +178,6 @@ these two values at render time, but the service refuses launches
 without them. Set `peerDiscovery.enabled=false` for the load-balancer
 topology (Setup 2 in `docs/HIGH-AVAILABILITY.md`). The chart version
 equals the application version; one release tag publishes both.
-
-## Conflict behavior
-
-The service detects a save conflict; it never merges changes on its
-own. Two situations trigger it:
-
-- A `PutFile` call returns 409 with an `X-WOPI-Lock` header that names
-  a lock value this service did not set (`internal/room/save.go`,
-  `ensureLocked`/`performSave`).
-- A scheduled version check (on every lock refresh, and whenever a new
-  user is observed joining an already-established room) finds Drive's
-  live `Version` (the S3 ETag) does not match the version this service
-  last recorded from its own successful `PutFile`
-  (`internal/room/save.go`, `checkVersion`).
-
-Once a room enters conflict state, the service stops attempting saves
-and stops refreshing the lock for that room, until the conflict is
-resolved. Resolution is a client-driven choice between overwriting
-the host with the retained in-memory scene, or discarding it and reloading
-the host's current content (`internal/room/manager.go`,
-`ResolveConflict`); the frontend surfaces this as the Overwrite/Reload
-banner. The client learns about a
-conflict two ways: a `conflict-state` socket.io push
-(`{"inConflict": bool, "saveStalled": bool}`) the moment
-`internal/room.Manager` detects or clears one, and, as a poll fallback
-if the socket connection is down, `GET /api/board/conflict`.
-`saveStalled` reports a dirty room whose every save attempt has failed
-for at least 5 minutes, or one that has lost write access on every
-tracked token (a deleted file, or write ability revoked on the host),
-which reports immediately instead of waiting for the 5-minute window.
-Either case is independent of a lock conflict. The client
-resolves a conflict with `POST /api/board/conflict/resolve`
-(writer-only; body `{"overwrite": bool}`). The reload branch also
-sends a `reload-required` socket.io push to every client in the room,
-not only the one that resolved the conflict, since the host's content
-moved out from under every open session, not just the resolver's. An
-operator does not need to intervene manually; a conflict clears itself
-once a user in the room picks one of those two options.
 
 ## Known limitations
 

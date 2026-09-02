@@ -1,0 +1,56 @@
+name: excalidraw-wopi
+
+services:
+  caddy:
+    image: caddy:2.11
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      EXCALIDRAW_WOPI_PUBLIC_URL: https://excalidraw.example.com
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - excalidraw-wopi
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1/lbhealthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # the app runs as uid 65532 cannot write the proof key
+  # without this one-shot chown.
+  volume-init:
+    image: busybox:1.37
+    command: chown 65532:65532 /var/lib/excalidraw-wopi
+    volumes:
+      - proof-key:/var/lib/excalidraw-wopi
+    restart: "no"
+
+  excalidraw-wopi:
+    # Pin a release tag in production; do not run "latest".
+    image: ghcr.io/zeylos/excalidraw-wopi:latest
+    environment:
+      EXCALIDRAW_WOPI_PUBLIC_URL: https://excalidraw.example.com
+      EXCALIDRAW_WOPI_WOPI_ALLOWED_ORIGINS: https://drive.example.com
+      # Replace with the output of: openssl rand -hex 32
+      EXCALIDRAW_WOPI_SESSION_SECRET: change-me
+    volumes:
+      - proof-key:/var/lib/excalidraw-wopi
+    depends_on:
+      volume-init:
+        condition: service_completed_successfully
+    restart: unless-stopped
+    # If you need a high available setup open the port and
+    # uncomment the Caddyfile HA block.
+    # See `docs/HIGH-AVAILABILITY.md` for details.
+    # ports:
+    # - 8080:8080
+
+volumes:
+  proof-key:
+  caddy-data:
+  caddy-config:
