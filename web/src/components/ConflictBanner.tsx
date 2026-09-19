@@ -196,7 +196,7 @@ export function ConflictBanner({ apiBase }: ConflictBannerProps) {
 					{/* Bare reload only: resolveConflict(overwrite:false) drops the
 					    room's retained scene server-side, and this is not a conflict.
 					    Deliberately does not set reloading: this is not a discard, so
-					    useSync's beforeunload PUT stays armed as the user's last
+					    useSync's teardown PUT stays armed as the user's last
 					    chance to save before the reload. */}
 					<button type="button" style={buttonStyle} onClick={() => window.location.reload()}>
 						Reload

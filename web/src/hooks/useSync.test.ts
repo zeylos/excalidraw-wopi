@@ -2,7 +2,7 @@
 
 import { beforeEach, describe, expect, it } from 'vitest'
 import { useCollaborationStore } from '../stores/useCollaborationStore'
-import { shouldSkipFinalServerSync, shouldSkipLocalSync, shouldSkipServerAPISync } from './useSync'
+import { shouldSkipFinalServerSync, shouldSkipLocalSync, shouldSkipPageHideSync, shouldSkipServerAPISync, shouldUseBlockingHiddenSync } from './useSync'
 import type { ServerAPISyncGateOptions } from './useSync'
 
 beforeEach(() => {
@@ -69,6 +69,30 @@ describe('useCollaborationStore.reloading gates shouldSkipFinalServerSync', () =
 		useCollaborationStore.getState().setReloading(true)
 
 		expect(shouldSkipFinalServerSync(fileId, isSyncer, conflict, useCollaborationStore.getState().reloading, true)).toBe(true)
+	})
+})
+
+describe('shouldSkipPageHideSync', () => {
+	it('runs the blocking teardown PUT when the page is really destroyed', () => {
+		expect(shouldSkipPageHideSync(false)).toBe(false)
+	})
+
+	it('skips the blocking teardown PUT when the page enters the back-forward cache', () => {
+		expect(shouldSkipPageHideSync(true)).toBe(true)
+	})
+})
+
+describe('shouldUseBlockingHiddenSync', () => {
+	it('hands a tab hide to the worker once the worker is ready', () => {
+		expect(shouldUseBlockingHiddenSync(true, true)).toBe(false)
+	})
+
+	it('keeps the blocking save while the worker has not signalled INIT_COMPLETE', () => {
+		expect(shouldUseBlockingHiddenSync(false, true)).toBe(true)
+	})
+
+	it('keeps the blocking save when no worker exists at all', () => {
+		expect(shouldUseBlockingHiddenSync(true, false)).toBe(true)
 	})
 })
 

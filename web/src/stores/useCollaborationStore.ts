@@ -46,12 +46,12 @@ interface CollaborationStore {
 	saveStalled: boolean
 	// True once this tab has committed to a full page reload (the
 	// ConflictBanner Reload button, or the reload-required broadcast). Set
-	// before the reload actually starts, since a beforeunload listener can
+	// before the reload actually starts, since a teardown listener can
 	// fire the instant window.location.reload() is called. useSync's
 	// shouldSkipFinalServerSync and shouldSkipServerAPISync read this via
 	// getState() and skip their PUT once it is set: the server already
 	// dropped this room's retained scene for the reload, and a stale
-	// cached scene re-posted from beforeunload would race the reloaded
+	// cached scene re-posted on teardown would race the reloaded
 	// page's own GET and overwrite the fresh content it is about to fetch.
 	// Terminal once true: a reload it guards against is now certain to
 	// happen, so resetStore (an unmount-time reset, not a completed reload)

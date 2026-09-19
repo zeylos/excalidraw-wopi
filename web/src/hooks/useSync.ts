@@ -19,9 +19,9 @@
 // covered by its own vitest suite), and the per-file IMAGE_ADD dedup hash
 // is utils/hashFileContent.ts (same reason).
 //
-// The final synchronous-XHR flush reads the cached JWT off useSessionStore
-// instead of a per-fileId token map: this project mints one session JWT
-// per launch.
+// The teardown synchronous-XHR flush reads the cached JWT off
+// useSessionStore instead of a per-fileId token map: this project mints one
+// session JWT per launch.
 
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { throttle } from 'lodash-es'
@@ -60,7 +60,7 @@ enum SyncMessageType {
 }
 
 /**
- * Pure gate for doFinalServerSync's beforeunload PUT, factored out so it is
+ * Pure gate for doFinalServerSync's blocking PUT, factored out so it is
  * testable without mounting a hook (this project has no
  * @testing-library/react dependency; ConflictBanner.tsx's
  * getConflictBannerState sets the same precedent). `reloading` true means
@@ -79,6 +79,32 @@ export function shouldSkipFinalServerSync(
 	initialDataResolved: boolean,
 ): boolean {
 	return !fileId || !isDedicatedSyncer || conflict || reloading || !initialDataResolved
+}
+
+/**
+ * Pure gate for the teardown listeners, factored out so it is testable
+ * without mounting a hook (same precedent as shouldSkipFinalServerSync).
+ * `persisted` true means the browser moves the page into the back-forward
+ * cache instead of destroying it. The page can run again later, so the
+ * blocking teardown PUT must not run: the visibilitychange listener that
+ * always fires first already started an asynchronous save, and the page
+ * stays alive to finish it.
+ */
+export function shouldSkipPageHideSync(persisted: boolean): boolean {
+	return persisted
+}
+
+/**
+ * Pure gate that picks the tab-hide save path, factored out so it is
+ * testable without mounting a hook (same precedent as
+ * shouldSkipFinalServerSync). The asynchronous path needs the sync worker,
+ * which shouldSkipServerAPISync drops the save for when it is absent. A
+ * cold start can resolve the board before the worker module loads, so this
+ * returns true there and the caller keeps the old blocking save. A hidden
+ * tab must never save less than it did before.
+ */
+export function shouldUseBlockingHiddenSync(isWorkerReady: boolean, hasWorker: boolean): boolean {
+	return !isWorkerReady || !hasWorker
 }
 
 /**
@@ -126,10 +152,12 @@ export interface ServerAPISyncGateOptions {
  * `reloading` true means this tab already committed to a page reload: this
  * PUT would just re-post the stale scene in the window before the reload
  * replaces the page. `forceSync` relaxes the dedicated-syncer and
- * collabStatus checks, for a caller that already runs off the dedicated
- * syncer's own unload handlers; no caller passes it true today
- * (doSyncToServerAPI always calls with the default `false`), so this
- * branch exists only to keep the function's API shape.
+ * collabStatus checks, for a caller that already gates on the syncer role
+ * itself: the visibilitychange listener passes it true, inside its own
+ * isSyncerRef branch, so a hidden tab still flushes while the socket
+ * reports anything other than online. `forceSync` relaxes nothing else:
+ * a missing worker, a conflict, a pending reload, or unresolved initial
+ * data still skip the save.
  */
 export function shouldSkipServerAPISync(options: ServerAPISyncGateOptions): boolean {
 	const {
@@ -540,7 +568,8 @@ export function useSync({ apiBase, maxImageBytes }: UseSyncConfig) {
 	// Cache the latest state for final sync - update on EVERY change
 	const cachedStateRef = useRef<{ elements: readonly ExcalidrawElement[]; files: BinaryFiles }>({ elements: [], files: {} as BinaryFiles })
 
-	// Direct sync when leaving - synchronous to ensure it completes
+	// This PUT blocks the main thread. Only a page teardown, a real
+	// unmount, or a tab hide with no usable worker may call it.
 	const doFinalServerSync = useCallback(() => {
 		// reloading and initialDataResolved read the store directly instead
 		// of through a hook, so this callback's identity does not change on
@@ -570,7 +599,11 @@ export function useSync({ apiBase, maxImageBytes }: UseSyncConfig) {
 			const url = withRoomParam(`${apiBase}/board`, fileId)
 			const data = JSON.stringify({ elements, files: files || {} })
 
-			// Use synchronous XMLHttpRequest (works in beforeunload)
+			// A keepalive fetch limits the sum of all in-flight bodies to
+			// 64 KiB. sendBeacon shares that quota and takes no
+			// Authorization header. A board with images is larger than the
+			// quota, so only a synchronous request completes before the
+			// browser destroys the document.
 			const xhr = new XMLHttpRequest()
 			xhr.open('PUT', url, false) // false = synchronous
 			xhr.setRequestHeader('Content-Type', 'application/json')
@@ -583,15 +616,16 @@ export function useSync({ apiBase, maxImageBytes }: UseSyncConfig) {
 	}, [fileId, apiBase, conflict])
 
 	// excalidrawAPI/isReadOnly/flushPendingWebSocketSync/doSyncToLocal/
-	// doFinalServerSync each change identity often during a session. The two
-	// effects below need the latest version of each, but must not re-run on
-	// every such change themselves. So this effect runs on every
-	// render, with no cleanup, and just refreshes the refs.
+	// doFinalServerSync/doSyncToServerAPI each change identity often during
+	// a session. The two effects below need the latest version of each, but
+	// must not re-run on every such change themselves. So this effect runs
+	// on every render, with no cleanup, and just refreshes the refs.
 	const excalidrawAPIRef = useRef(excalidrawAPI)
 	const isReadOnlyRef = useRef(isReadOnly)
 	const flushPendingWebSocketSyncRef = useRef(flushPendingWebSocketSync)
 	const doSyncToLocalForFlushRef = useRef(doSyncToLocal)
 	const doFinalServerSyncRef = useRef(doFinalServerSync)
+	const doSyncToServerAPIForFlushRef = useRef(doSyncToServerAPI)
 
 	useEffect(() => {
 		excalidrawAPIRef.current = excalidrawAPI
@@ -599,14 +633,27 @@ export function useSync({ apiBase, maxImageBytes }: UseSyncConfig) {
 		flushPendingWebSocketSyncRef.current = flushPendingWebSocketSync
 		doSyncToLocalForFlushRef.current = doSyncToLocal
 		doFinalServerSyncRef.current = doFinalServerSync
+		doSyncToServerAPIForFlushRef.current = doSyncToServerAPI
 	})
 
-	// Registers the beforeunload/visibilitychange listeners once.
+	// Registers the pagehide/visibilitychange listeners once.
 	// throttledSyncToLocal and throttledSyncToServerAPI are stable for the
 	// component's lifetime (see above), so this dependency array never
 	// changes. The listeners are added and removed exactly once.
+	//
+	// The teardown save listens on both pagehide and beforeunload. pagehide
+	// alone is not enough: iOS Safari fires beforeunload unreliably, and
+	// dropping beforeunload would make the page back-forward-cacheable in
+	// Firefox, which restores it with a dead relay socket and no pageshow
+	// listener to rebuild one. teardownFlushedRef keeps the pair to one save.
 	useEffect(() => {
-		const handleBeforeUnload = () => {
+		const teardownFlushedRef = { flushed: false }
+
+		const flushOnTeardown = () => {
+			if (teardownFlushedRef.flushed) {
+				return
+			}
+
 			const api = excalidrawAPIRef.current
 			const readOnly = isReadOnlyRef.current
 
@@ -622,9 +669,21 @@ export function useSync({ apiBase, maxImageBytes }: UseSyncConfig) {
 				doSyncToLocalForFlushRef.current()
 				doFinalServerSyncRef.current()
 			}
+
+			teardownFlushedRef.flushed = true
 		}
 
-		// Also handle visibility change as backup for mobile/tabs
+		const handlePageHide = (event: PageTransitionEvent) => {
+			if (shouldSkipPageHideSync(event.persisted)) {
+				return
+			}
+			flushOnTeardown()
+		}
+
+		// A tab hide is not a teardown: the page keeps running, so this
+		// path hands the save to the worker. doFinalServerSync's
+		// synchronous XHR here held the main thread for the whole request,
+		// which froze the tab.
 		const handleVisibilityChange = () => {
 			if (document.visibilityState !== 'hidden' || !excalidrawAPIRef.current || isReadOnlyRef.current) {
 				return
@@ -632,19 +691,29 @@ export function useSync({ apiBase, maxImageBytes }: UseSyncConfig) {
 
 			flushPendingWebSocketSyncRef.current()
 
-			if (isSyncerRef.current) {
-				throttledSyncToLocal.cancel()
-				throttledSyncToServerAPI.cancel()
-				doSyncToLocalForFlushRef.current()
-				doFinalServerSyncRef.current()
+			if (!isSyncerRef.current) {
+				return
 			}
+
+			throttledSyncToLocal.cancel()
+			throttledSyncToServerAPI.cancel()
+			doSyncToLocalForFlushRef.current()
+
+			const { isWorkerReady: ready, worker: syncWorker } = useSyncStore.getState()
+			if (shouldUseBlockingHiddenSync(ready, !!syncWorker)) {
+				doFinalServerSyncRef.current()
+				return
+			}
+			void doSyncToServerAPIForFlushRef.current(true)
 		}
 
-		window.addEventListener('beforeunload', handleBeforeUnload)
+		window.addEventListener('pagehide', handlePageHide)
+		window.addEventListener('beforeunload', flushOnTeardown)
 		document.addEventListener('visibilitychange', handleVisibilityChange)
 
 		return () => {
-			window.removeEventListener('beforeunload', handleBeforeUnload)
+			window.removeEventListener('pagehide', handlePageHide)
+			window.removeEventListener('beforeunload', flushOnTeardown)
 			document.removeEventListener('visibilitychange', handleVisibilityChange)
 		}
 	}, [throttledSyncToLocal, throttledSyncToServerAPI])
