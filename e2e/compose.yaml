@@ -11,6 +11,14 @@
 # Port map: postgresql 5432, redis 6379, rustfs 9000, Drive app-dev
 # 8000. Our own Go binary (excalidraw-wopi, port 8080) is not a compose
 # service: it runs on the host, started by `make e2e-up` (see Makefile).
+#
+# Build constraint: e2e/scripts/e2e-up.sh builds the Drive image itself
+# with `docker build --network=host` and starts this file with
+# `--no-build`. The e2e README explains the reason. The build: blocks
+# below stay for two reasons. `docker compose config` still reports the
+# image and the build inputs. A manual `docker compose up` also still
+# works on a daemon that has a bridge network. Keep the blocks and the
+# script build command in step.
 
 name: excalidraw-wopi-e2e
 
@@ -104,7 +112,6 @@ services:
       context: ./.drive
       dockerfile: Dockerfile
       target: backend-development
-      network: host
       args:
         DOCKER_USER: ${DOCKER_USER:-1000:1000}
     image: excalidraw-wopi-e2e-drive:backend-development
@@ -141,7 +148,6 @@ services:
       context: ./.drive
       dockerfile: Dockerfile
       target: backend-development
-      network: host
       args:
         DOCKER_USER: ${DOCKER_USER:-1000:1000}
     image: excalidraw-wopi-e2e-drive:backend-development

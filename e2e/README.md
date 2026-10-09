@@ -22,6 +22,12 @@ seed script addresses Drive, as `localhost:<port>` — never by service
 name. GitHub Actions runners support host networking too, so this same
 file runs in CI.
 
+The Drive image build has the same constraint. A build container gets no
+network on a daemon with no bridge. `e2e-up.sh` runs that build itself
+with `docker build --network=host`, so the build reaches the package
+registries. Compose cannot run it: Compose 5 sends every build to bake,
+and bake refuses `network: host` without an entitlement grant.
+
 ## Port map
 
 | Port | Service |
@@ -45,9 +51,10 @@ make e2e-down   # stop our binary, tear down the containers and their volumes
 ```
 
 `make e2e-up` runs, in order: `e2e/scripts/fetch-drive.sh` (clones Drive
-into `e2e/.drive` if it is not already there), `docker compose up --build
+into `e2e/.drive` if it is not already there), a `docker build
+--network=host` of the Drive image, `docker compose up --no-build
 --wait`, Django migrations, a build of our binary, a start of our binary
-in the background (PID file under `e2e/.run/`), and a
+in the background (PID file under `e2e/.run/`), and the
 `trigger_wopi_configuration` call that makes Drive fetch our discovery XML
 and route the `.excalidraw` extension to us. It polls Drive's routing
 cache for that last step instead of guessing a sleep.

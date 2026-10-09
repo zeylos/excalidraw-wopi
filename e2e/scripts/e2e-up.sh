@@ -11,14 +11,28 @@ RUN_DIR="$E2E_DIR/.run"
 PID_FILE="$RUN_DIR/excalidraw-wopi.pid"
 LOG_FILE="$RUN_DIR/excalidraw-wopi.log"
 COMPOSE=(docker compose -f "$E2E_DIR/compose.yaml")
+DRIVE_IMAGE="excalidraw-wopi-e2e-drive:backend-development"
 
 mkdir -p "$RUN_DIR"
 
 echo "== fetch-drive =="
 "$SCRIPT_DIR/fetch-drive.sh"
 
-echo "== docker compose up =="
 export DOCKER_USER="$(id -u):$(id -g)"
+
+# Compose 5 builds through bake. Bake refuses `network: host` without
+# `--allow=network.host`, and Compose cannot pass that flag. A plain
+# `docker build` on the default builder accepts `--network=host`, so the
+# build runs here and Compose starts the stack with `--no-build`.
+echo "== docker build drive image =="
+BUILDX_BUILDER=default docker build \
+  --network=host \
+  --target backend-development \
+  --build-arg "DOCKER_USER=$DOCKER_USER" \
+  -t "$DRIVE_IMAGE" \
+  "$E2E_DIR/.drive"
+
+echo "== docker compose up =="
 
 # Under the fuse-overlayfs storage driver, docker sometimes drops a
 # container create with "symlink /proc/mounts .../etc/mtab: file exists"
@@ -27,7 +41,7 @@ export DOCKER_USER="$(id -u):$(id -g)"
 # retry). Retry the whole `up` a few times: each retry only touches
 # containers that are not already up.
 up_attempt=0
-until "${COMPOSE[@]}" up -d --build --wait; do
+until "${COMPOSE[@]}" up -d --no-build --wait; do
   up_attempt=$((up_attempt + 1))
   if [ "$up_attempt" -ge 5 ]; then
     echo "docker compose up failed after $up_attempt attempts" >&2
