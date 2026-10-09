@@ -24,10 +24,10 @@ web-lint: web-deps
 test: go-test web-test
 
 lint:
-	go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.13.1 run
+	go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.14.0 run
 
 chart-lint: ## lint the Helm chart and render it under every documented topology
-	@command -v helm >/dev/null || { echo "chart-lint needs helm v3.21+ on PATH" >&2; exit 1; }
+	@command -v helm >/dev/null || { echo "chart-lint needs helm v4+ on PATH" >&2; exit 1; }
 	helm lint deploy/helm/excalidraw-wopi
 	helm template deploy/helm/excalidraw-wopi > /dev/null
 	helm template deploy/helm/excalidraw-wopi --set peerDiscovery.enabled=false > /dev/null

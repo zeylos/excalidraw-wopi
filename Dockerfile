@@ -1,14 +1,14 @@
 # Dockerfile.goreleaser stays the release-path Dockerfile; it expects a
 # pre-built binary. This file builds everything from source instead.
 
-FROM node:24-trixie-slim@sha256:50c3b2f6988dfc307b86e5301d69611af31f4789bdf232863b07d3b02fe55ae0 AS web-build
+FROM node:24-trixie-slim@sha256:173f125896c3b47ddf056734c7ea789d04595a6a08769a8f78e0df642781fb66 AS web-build
 WORKDIR /src/web
 COPY web/package.json web/package-lock.json ./
 RUN npm ci
 COPY web/ ./
 RUN npx vite build
 
-FROM golang:1.26-trixie@sha256:e6e8ff4b72b128bb673613645c5ac415e4f537b2390e77a86ffc40622ab56da8 AS go-build
+FROM golang:1.27-trixie@sha256:2f84bc93ecfb2689f782b153fdcd368b5a7ab96c1386c65cdaccf35e726d6a44 AS go-build
 ARG VERSION=dev
 ARG COMMIT=none
 WORKDIR /src
@@ -20,7 +20,7 @@ RUN CGO_ENABLED=0 go build \
     -ldflags "-s -w -X main.version=${VERSION} -X main.commit=${COMMIT}" \
     -o /excalidraw-wopi ./cmd/excalidraw-wopi
 
-FROM gcr.io/distroless/static-debian13:nonroot@sha256:1c2c046bc09ed40fad370b599a0b1ae7987f55b01e247cf27a7c27cd97e5bbc7
+FROM gcr.io/distroless/static-debian13:nonroot@sha256:e2e927ec666bae08560abb3c55d0659eceabb657f56b6782ab500a9fc7f555e3
 COPY --from=go-build /excalidraw-wopi /usr/local/bin/excalidraw-wopi
 
 EXPOSE 8080
