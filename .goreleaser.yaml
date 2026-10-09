@@ -50,6 +50,7 @@ dockers_v2:
       - linux/arm64
 
 release:
+  replace_existing_artifacts: true
   github:
     owner: zeylos
     name: excalidraw-wopi
