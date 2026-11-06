@@ -49,7 +49,7 @@ services:
       retries: 300
 
   rustfs:
-    image: rustfs/rustfs:1.0.1
+    image: rustfs/rustfs:1.0.4
     network_mode: host
     environment:
       - RUSTFS_ACCESS_KEY=drive
@@ -63,7 +63,7 @@ services:
       - rustfs_data:/data
 
   createbuckets:
-    image: curlimages/curl:8.22.0
+    image: curlimages/curl:8.23.0
     network_mode: host
     depends_on:
       rustfs:

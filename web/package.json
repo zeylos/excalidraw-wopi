@@ -27,7 +27,7 @@
     "@vitejs/plugin-react": "^6",
     "eslint": "^9",
     "eslint-plugin-react-hooks": "^5",
-    "happy-dom": "^20",
+    "happy-dom": "^21",
     "sass": "^1",
     "typescript": "^5",
     "typescript-eslint": "^8",

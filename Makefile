@@ -24,7 +24,7 @@ web-lint: web-deps
 test: go-test web-test
 
 lint:
-	go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.14.0 run
+	go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.15.0 run
 
 chart-lint: ## lint the Helm chart and render it under every documented topology
 	@command -v helm >/dev/null || { echo "chart-lint needs helm v4+ on PATH" >&2; exit 1; }
